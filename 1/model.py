@@ -34,23 +34,18 @@ from awq import AutoAWQForCausalLM
 
 MODEL_NAME = "TheBloke/zephyr-7B-beta-AWQ"
 
-
 class TritonPythonModel:
     """
-    This model takes 1 input tensor, an INT32 [ 1 ] input named "IN", and
-    produces an output tensor "OUT" with the same shape as the input tensor.
-    The input value indicates the total number of responses to be generated and
-    the output value indicates the number of remaining responses. For example,
+    This model takes  input tensor, a STRING input named "TEST", and
+    produces an output tensor "OUT" with the STRING Response
     if the request input has value 2, the model will:
-        - Send a response with value 1.
-        - Release request with RESCHEDULE flag.
-        - When execute on the same request, send the last response with value 0.
+        - Send a "Test" as input 
+        - Keeps on sending steaming response
         - Release request with ALL flag.
     """
 
     def initialize(self, args):
         self.model_config = model_config = json.loads(args["model_config"])
-
         using_decoupled = pb_utils.using_decoupled_model_transaction_policy(
             model_config
         )
@@ -63,10 +58,7 @@ class TritonPythonModel:
                 )
             )
 
-        # Get IN configuration
-
-        self.remaining_response = 0
-        self.reset_flag = True
+        # Load the Model 
         self.model = AutoAWQForCausalLM.from_quantized(MODEL_NAME, fuse_layers=False, version="GEMV")
         self.tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
         self.streamer = TextIteratorStreamer(self.tokenizer, skip_prompt=True, skip_special_tokens=True)
@@ -76,13 +68,11 @@ class TritonPythonModel:
     def execute(self, requests):
         for request in requests:
             in_input = pb_utils.get_input_tensor_by_name(request, "TEXT")
-            import base64
 
             string_data = str(in_input.as_numpy())
             print(string_data)
 
             messages = [{ "role": "system", "content": "You are an agent that know about about cooking." }] 
-            output=base64.b64encode(b'GeeksForGeeks')
 
             messages.append({ "role": "user", "content": string_data })
             tokenized_chat = self.tokenizer.apply_chat_template(messages, tokenize=True, add_generation_prompt=True, return_tensors="pt").cuda()
@@ -96,11 +86,6 @@ class TritonPythonModel:
                 repetition_penalty=1.2,
                 max_new_tokens=1024,
             )
-
-            out_output = pb_utils.Tensor(
-                "OUT", np.array([output])
-            )
-            response = pb_utils.InferenceResponse(output_tensors=[out_output])
             response_sender = request.get_response_sender()
 
             thread = Thread(target=self.model.generate, kwargs=generation_kwargs)
