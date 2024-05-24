@@ -25,7 +25,8 @@ pip install "autoawq==0.1.8"
 pip install "torch==2.1.2"
 ```
 * Load the model explicitely
-curl --location --request POST 'http://localhost:8000/v2/repository/models/nvidia-streaming-sse-2/load'
-* Call the test.sh to make inference 
+curl --location --request POST 'http://localhost:8000/v2/repository/models/nvidia-triton-llm-streaming/load'
+* Run 'test.sh' to call inference 
 
-* 
+
+
