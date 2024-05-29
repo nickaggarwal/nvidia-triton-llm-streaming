@@ -67,7 +67,7 @@ class TritonPythonModel:
             for new_text in self.streamer:
                 print(new_text, flush=True)
                 out_output = pb_utils.Tensor(
-                    "OUT", np.array([new_text.encode('ascii')])
+                    "OUT", np.array([new_text.encode('ascii', 'ignore')])
                 )
                 response = pb_utils.InferenceResponse(output_tensors=[out_output])
                 response_sender.send(response)
